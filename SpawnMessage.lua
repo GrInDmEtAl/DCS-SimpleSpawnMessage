@@ -1,57 +1,46 @@
-
-
 spawnmsg = {}
+spawnmsg.message = "" -- Mensagem global que será enviada
 
-spawnmsg.message = ""
-
--- Handles all world events
+-- Handler de eventos
 spawnmsg.eventHandler = {}
-function spawnmsg.eventHandler:onEvent(_event)
-    local status, err = pcall(function(_event)
 
-        if _event == nil or _event.initiator == nil then
-            return false
+function spawnmsg.eventHandler:onEvent(event)
+    local status, err = pcall(function()
+        -- Validações iniciais
+        if not event or not event.initiator then return end
 
-        elseif _event.id == 15 then --player entered unit
-
-            if  _event.initiator:getName() then
-
-                if spawnmsg.message ~= "" then
-                    spawnmsg.displayMessageToGroup(_event.initiator,spawnmsg.message , 20,false)
-                end
-
+        -- Evento de jogador entrando em unidade
+        if event.id == world.event.S_EVENT_PLAYER_ENTER_UNIT then
+            local unitName = event.initiator:getName()
+            if unitName and spawnmsg.message ~= "" then
+                spawnmsg.displayMessageToGroup(event.initiator, spawnmsg.message, 20, false)
             end
-
-            return true
         end
-    end, _event)
-    if (not status) then
-        env.error(string.format("Error while handling event %s", err),false)
+    end)
+
+    if not status then
+        env.error(string.format("Erro ao tratar evento: %s", err), false)
     end
 end
 
-function spawnmsg.getGroupId(_unit)
-
-    local _unitDB =  mist.DBs.unitsById[tonumber(_unit:getID())]
-    if _unitDB ~= nil and _unitDB.groupId then
-        return _unitDB.groupId
-    end
-
-    return nil
+-- Obtém o ID do grupo baseado na unidade
+function spawnmsg.getGroupId(unit)
+    local unitId = tonumber(unit:getID())
+    local unitDB = mist.DBs.unitsById[unitId]
+    return unitDB and unitDB.groupId or nil
 end
-function spawnmsg.displayMessageToGroup(_unit, _text, _time,_clear)
 
-    local _groupId = spawnmsg.getGroupId(_unit)
-
-    if _groupId then
-        if _clear == true then
-            trigger.action.outTextForGroup(_groupId, _text, _time,_clear)
-        else
-            trigger.action.outTextForGroup(_groupId, _text, _time)
-        end
+-- Exibe mensagem para o grupo da unidade
+function spawnmsg.displayMessageToGroup(unit, text, duration, clear)
+    local groupId = spawnmsg.getGroupId(unit)
+    if groupId then
+        trigger.action.outTextForGroup(groupId, text, duration or 10, clear or false)
+    else
+        env.warning(string.format("Grupo não encontrado para unidade: %s", unit:getName()), false)
     end
-
 end
+
+-- Adiciona o event handler ao mundo
 world.addEventHandler(spawnmsg.eventHandler)
 
-env.info("Message On Spawn event handler added")
+env.info("Spawn Message Handler ativo e pronto.")
